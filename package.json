@@ -1,0 +1,17 @@
+{
+  "name": "faculdade-fullstack-pratica",
+  "version": "1.0.0",
+  "description": "Aplicacao Full Stack simples para demonstrar comunicacao entre front-end e back-end.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "fullstack",
+    "nodejs",
+    "javascript",
+    "html"
+  ],
+  "author": "Riquelme",
+  "license": "MIT"
+}
