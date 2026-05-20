@@ -43,6 +43,13 @@ function handleGreeting(request, response, url) {
     return;
   }
 
+  if (name.length > 60) {
+    sendJson(response, 400, {
+      erro: "O nome deve ter no maximo 60 caracteres."
+    });
+    return;
+  }
+
   sendJson(response, 200, {
     mensagem: `Ola, ${name}! Seja bem-vindo(a) a aplicacao Full Stack.`
   });
