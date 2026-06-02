@@ -1,44 +1,78 @@
-# Pratica Full Stack e Versionamento
+# Full Stack API Integration
 
-Projeto academico para demonstrar a comunicacao entre front-end e back-end usando HTML, CSS, JavaScript e Node.js.
+Projeto academico full stack para demonstrar a comunicacao entre front-end e back-end usando JavaScript, Node.js e retorno em JSON.
 
 ## Funcionalidades
 
-- Pagina HTML com formulario para digitar o nome do usuario.
-- Requisicao HTTP feita pelo JavaScript do navegador.
-- Rota `GET /api/saudacao` no servidor Node.js.
-- Resposta JSON com saudacao personalizada.
-- Historico Git com uso de branch de feature e branch de hotfix.
+- Interface responsiva com status da API
+- Formulario para envio do nome do usuario
+- Requisicao HTTP com `fetch`
+- Endpoint `/api/saudacao` retornando JSON
+- Tratamento visual para API online/offline
+- Visualizacao da resposta JSON na tela
 
-## Como executar
+## Tecnologias
 
-1. Instale o Node.js.
-2. No terminal, acesse a pasta do projeto.
-3. Execute:
+- HTML
+- CSS
+- JavaScript
+- Node.js
+
+## Como executar pelo servidor Node.js
+
+Abra a pasta do projeto no terminal e rode:
 
 ```bash
 npm start
 ```
 
-4. Abra no navegador:
+Depois acesse:
 
 ```text
 http://localhost:3000
 ```
 
-## Rotas
+## Como testar pelo Live Server
 
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/` | Exibe a interface da aplicacao. |
-| GET | `/api/saudacao?nome=SeuNome` | Retorna uma saudacao personalizada em JSON. |
+1. Rode o back-end primeiro:
 
-## Fluxo de versionamento utilizado
+```bash
+npm start
+```
 
-- `main`: branch principal do projeto.
-- `feature/interface-saudacao`: branch usada para criar a interface e integrar com o servidor.
-- `hotfix/validacao-nome`: branch usada para corrigir a validacao de nome vazio.
+2. Depois abra `public/index.html` com Live Server.
 
-## Autor
+Mesmo no Live Server, o front-end chama a API em:
 
-Riquelme
+```text
+http://localhost:3000
+```
+
+## Como abrir com dois cliques no Windows
+
+Execute o arquivo:
+
+```text
+abrir-projeto.bat
+```
+
+Ele inicia o servidor Node.js e abre o navegador em `http://localhost:3000`.
+
+## Rotas da API
+
+```text
+GET /api/status
+GET /api/saudacao?nome=Riquelme
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "mensagem": "Ola, Riquelme! Seja bem-vindo(a) a aplicacao Full Stack."
+}
+```
+
+## Observacao importante
+
+Se aparecer `API offline` ou `Failed to fetch`, o front-end abriu, mas o back-end Node.js nao esta rodando. Execute `npm start` antes de enviar o formulario.

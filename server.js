@@ -13,7 +13,14 @@ const contentTypes = {
   ".json": "application/json; charset=utf-8"
 };
 
+function setCorsHeaders(response) {
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 function sendJson(response, statusCode, data) {
+  setCorsHeaders(response);
   response.writeHead(statusCode, { "Content-Type": contentTypes[".json"] });
   response.end(JSON.stringify(data));
 }
@@ -57,6 +64,21 @@ function handleGreeting(request, response, url) {
 
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
+
+  if (request.method === "OPTIONS") {
+    setCorsHeaders(response);
+    response.writeHead(204);
+    response.end();
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/status") {
+    sendJson(response, 200, {
+      status: "online",
+      mensagem: "API Node.js pronta para receber requisicoes."
+    });
+    return;
+  }
 
   if (request.method === "GET" && url.pathname === "/api/saudacao") {
     handleGreeting(request, response, url);
