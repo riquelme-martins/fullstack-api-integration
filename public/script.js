@@ -9,7 +9,14 @@ const apiDot = document.querySelector("#api-dot");
 const routePreview = document.querySelector("#route-preview");
 const jsonOutput = document.querySelector("#json-output");
 
+// Verifica se os elementos essenciais do DOM existem antes de continuar
+if (!form || !nameInput || !result || !submitButton || !jsonOutput) {
+  console.error("Elementos essenciais do DOM nao encontrados. Verifique o HTML.");
+  throw new Error("Elementos essenciais do DOM nao encontrados.");
+}
+
 const API_PORT = "3000";
+const REQUEST_TIMEOUT_MS = 5000;
 
 function getApiBaseUrl() {
   const { protocol, hostname, port, origin } = window.location;
@@ -56,20 +63,32 @@ function updateRoutePreview() {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url);
-  const contentType = response.headers.get("content-type") || "";
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (!contentType.includes("application/json")) {
-    throw new Error("A API nao retornou JSON. Abra o projeto por http://localhost:3000 ou rode npm start.");
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      throw new Error("A API nao retornou JSON. Abra o projeto por http://localhost:3000 ou rode npm start.");
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.erro || "Nao foi possivel concluir a requisicao.");
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`A requisicao excedeu o tempo limite de ${REQUEST_TIMEOUT_MS / 1000}s. Verifique se o servidor esta rodando.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.erro || "Nao foi possivel concluir a requisicao.");
-  }
-
-  return data;
 }
 
 async function checkApiStatus() {
@@ -81,13 +100,14 @@ async function checkApiStatus() {
     showJson(data);
     return true;
   } catch (error) {
+    console.error("[checkApiStatus] Erro ao verificar API:", error);
     setApiStatus("offline", "API offline");
     showJson({
       status: "offline",
-      erro: "Servidor Node.js nao encontrado",
+      erro: error.message || "Servidor Node.js nao encontrado",
       solucao: "No terminal do projeto, execute: npm start"
     });
-    showResult("API offline. Abra um terminal na pasta do projeto e rode npm start.", "error");
+    showResult(error.message || "API offline. Abra um terminal na pasta do projeto e rode npm start.", "error");
     return false;
   }
 }
@@ -103,7 +123,9 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  const originalButtonText = submitButton.textContent;
   submitButton.disabled = true;
+  submitButton.textContent = "Enviando...";
   showResult("Enviando requisicao para o servidor Node.js...");
 
   try {
@@ -112,6 +134,7 @@ form.addEventListener("submit", async (event) => {
     showResult(data.mensagem, "success");
     showJson(data);
   } catch (error) {
+    console.error("[submit] Erro ao enviar requisicao:", error);
     setApiStatus("offline", "API offline");
     showResult(error.message || "Falha ao conectar com o back-end.", "error");
     showJson({
@@ -121,6 +144,7 @@ form.addEventListener("submit", async (event) => {
     });
   } finally {
     submitButton.disabled = false;
+    submitButton.textContent = originalButtonText;
   }
 });
 
