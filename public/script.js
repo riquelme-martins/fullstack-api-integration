@@ -1,48 +1,52 @@
-const form = document.querySelector("#greeting-form");
-const nameInput = document.querySelector("#name");
-const result = document.querySelector("#result");
-const submitButton = document.querySelector("#submit-button");
-const checkApiButton = document.querySelector("#check-api");
-const apiStatus = document.querySelector("#api-status");
-const apiUrl = document.querySelector("#api-url");
-const apiDot = document.querySelector("#api-dot");
-const routePreview = document.querySelector("#route-preview");
-const jsonOutput = document.querySelector("#json-output");
+( function () {
+  const form = document.querySelector("#greeting-form");
+  const nameInput = document.querySelector("#name");
+  const result = document.querySelector("#result");
+  const submitButton = document.querySelector("#submit-button");
+  const checkApiButton = document.querySelector("#check-api");
+  const apiStatus = document.querySelector("#api-status");
+  const apiUrl = document.querySelector("#api-url");
+  const apiDot = document.querySelector("#api-dot");
+  const routePreview = document.querySelector("#route-preview");
+  const jsonOutput = document.querySelector("#json-output");
 
-// Verifica se os elementos essenciais do DOM existem antes de continuar
-if (!form || !nameInput || !result || !submitButton || !jsonOutput) {
-  console.error("[init] Elementos essenciais do DOM nao encontrados. Verifique o HTML.");
-  // Nao usa throw para nao quebrar a pagina — apenas interrompe a inicializacao
-  return;
-}
+  // Verifica se os elementos essenciais do DOM existem antes de continuar
+  if (!form || !nameInput || !result || !submitButton || !jsonOutput) {
+    console.error("[init] Elementos essenciais do DOM nao encontrados. Verifique o HTML.");
+    return;
+  }
 
-const API_PORT = "3000";
-const REQUEST_TIMEOUT_MS = 5000;
+  const API_PORT = "3000";
+  const REQUEST_TIMEOUT_MS = 5000;
 
-function getApiBaseUrl() {
+  function getApiBaseUrl() {
   const { protocol, hostname, port, origin } = window.location;
 
+  // Se abriu o HTML direto pelo arquivo (file://), usa localhost
   if (protocol === "file:") {
     return `http://localhost:${API_PORT}`;
   }
 
-  if (port === API_PORT) {
+  // Se o servidor Node.js está servindo o HTML (mesma porta)
+  if (port && port === API_PORT) {
     return origin;
   }
 
+  // Se está em localhost/127.0.0.1 mas porta diferente (ex: live server)
   if (hostname === "127.0.0.1" || hostname === "localhost") {
-    return `http://localhost:${API_PORT}`;
+    return `http://${hostname}:${API_PORT}`;
   }
 
+  // Fallback
   return `http://localhost:${API_PORT}`;
 }
 
 const apiBaseUrl = getApiBaseUrl();
 
 function setApiStatus(status, message) {
-  apiDot.className = `status-dot ${status}`;
-  apiStatus.textContent = message;
-  apiUrl.textContent = `Endpoint: ${apiBaseUrl}`;
+  if (apiDot) apiDot.className = `status-dot ${status}`;
+  if (apiStatus) apiStatus.textContent = message;
+  if (apiUrl) apiUrl.textContent = `Endpoint: ${apiBaseUrl}`;
 }
 
 function showResult(message, type = "info") {
@@ -67,8 +71,19 @@ async function fetchJson(url) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  let response;
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    response = await fetch(url, { signal: controller.signal });
+  } catch (networkError) {
+    clearTimeout(timeoutId);
+    if (networkError.name === "AbortError") {
+      throw new Error(`A requisicao excedeu o tempo limite de ${REQUEST_TIMEOUT_MS / 1000}s. Verifique se o servidor esta rodando em ${apiBaseUrl}.`);
+    }
+    // Erro de rede (servidor offline, CORS, conexão recusada)
+    throw new Error(`Nao foi possivel conectar com a API em ${apiBaseUrl}. Verifique se o servidor esta rodando (npm start).`);
+  }
+
+  try {
     const contentType = response.headers.get("content-type") || "";
 
     if (!contentType.includes("application/json")) {
@@ -84,15 +99,24 @@ async function fetchJson(url) {
     return data;
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error(`A requisicao excedeu o tempo limite de ${REQUEST_TIMEOUT_MS / 1000}s. Verifique se o servidor esta rodando.`);
+      throw new Error(`A requisicao excedeu o tempo limite de ${REQUEST_TIMEOUT_MS / 1000}s.`);
     }
-    throw error;
+    // Se ja e um Error com mensagem especifica, repassa
+    if (error.message && error.message.startsWith("Nao foi possivel")) {
+      throw error;
+    }
+    if (error.message && error.message.startsWith("A API nao retornou")) {
+      throw error;
+    }
+    throw new Error(`Erro ao processar resposta da API: ${error.message}`);
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
 async function checkApiStatus() {
+  // Mostra o endpoint imediatamente, antes mesmo de verificar
+  if (apiUrl) apiUrl.textContent = `Endpoint: ${apiBaseUrl}`;
   setApiStatus("checking", "Verificando API...");
 
   try {
@@ -103,12 +127,14 @@ async function checkApiStatus() {
   } catch (error) {
     console.error("[checkApiStatus] Erro ao verificar API:", error);
     setApiStatus("offline", "API offline");
+    const errorMsg = error.message || "Servidor Node.js nao encontrado";
     showJson({
       status: "offline",
-      erro: error.message || "Servidor Node.js nao encontrado",
+      erro: errorMsg,
+      endpoint: apiBaseUrl,
       solucao: "No terminal do projeto, execute: npm start"
     });
-    showResult(error.message || "API offline. Abra um terminal na pasta do projeto e rode npm start.", "error");
+    showResult(errorMsg, "error");
     return false;
   }
 }
@@ -124,24 +150,28 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  const endpoint = buildGreetingEndpoint(name);
   const originalButtonText = submitButton.textContent;
   submitButton.disabled = true;
   submitButton.textContent = "Enviando...";
-  showResult("Enviando requisicao para o servidor Node.js...");
+  showResult(`Enviando requisicao para ${endpoint}...`);
+  showJson({ status: "enviando", endpoint });
 
   try {
-    const data = await fetchJson(buildGreetingEndpoint(name));
+    const data = await fetchJson(endpoint);
     setApiStatus("online", "API online");
     showResult(data.mensagem, "success");
     showJson(data);
   } catch (error) {
     console.error("[submit] Erro ao enviar requisicao:", error);
     setApiStatus("offline", "API offline");
-    showResult(error.message || "Falha ao conectar com o back-end.", "error");
+    const errorMessage = error.message || "Falha ao conectar com o back-end.";
+    showResult(errorMessage, "error");
     showJson({
       status: "erro",
-      mensagem: error.message,
-      endpoint: apiBaseUrl
+      mensagem: errorMessage,
+      endpoint: endpoint,
+      dica: "Certifique-se de que o servidor Node.js esta rodando. No terminal do projeto, execute: npm start"
     });
   } finally {
     submitButton.disabled = false;
@@ -152,5 +182,6 @@ form.addEventListener("submit", async (event) => {
 nameInput.addEventListener("input", updateRoutePreview);
 checkApiButton.addEventListener("click", checkApiStatus);
 
-updateRoutePreview();
-checkApiStatus();
+  updateRoutePreview();
+  checkApiStatus();
+}() );
