@@ -64,6 +64,9 @@ function handleGreeting(request, response, url) {
 
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
+  const timestamp = new Date().toISOString();
+
+  console.log(`[${timestamp}] ${request.method} ${url.pathname}${url.search}`);
 
   if (request.method === "OPTIONS") {
     setCorsHeaders(response);
@@ -97,6 +100,27 @@ const server = http.createServer((request, response) => {
   sendJson(response, 405, { erro: "Metodo nao permitido." });
 });
 
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`\n[ERRO] A porta ${PORT} ja esta em uso.`);
+    console.error(`  - Feche o outro processo que usa a porta ${PORT}, ou`);
+    console.error(`  - Altere a variavel PORT no server.js ou use: PORT=3001 node server.js`);
+  } else if (error.code === "EACCES") {
+    console.error(`\n[ERRO] Sem permissao para usar a porta ${PORT}.`);
+    console.error(`  - Tente uma porta acima de 1024, ou execute como administrador.`);
+  } else {
+    console.error(`\n[ERRO] Falha ao iniciar o servidor: ${error.message}`);
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`\n========================================`);
+  console.log(`  Servidor rodando em http://localhost:${PORT}`);
+  console.log(`  Rotas disponiveis:`);
+  console.log(`    GET http://localhost:${PORT}/api/status`);
+  console.log(`    GET http://localhost:${PORT}/api/saudacao?nome=SeuNome`);
+  console.log(`    GET http://localhost:${PORT}/ (interface web)`);
+  console.log(`========================================\n`);
+  console.log(`Pressione Ctrl+C para encerrar o servidor.\n`);
 });

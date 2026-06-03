@@ -11,8 +11,9 @@ const jsonOutput = document.querySelector("#json-output");
 
 // Verifica se os elementos essenciais do DOM existem antes de continuar
 if (!form || !nameInput || !result || !submitButton || !jsonOutput) {
-  console.error("Elementos essenciais do DOM nao encontrados. Verifique o HTML.");
-  throw new Error("Elementos essenciais do DOM nao encontrados.");
+  console.error("[init] Elementos essenciais do DOM nao encontrados. Verifique o HTML.");
+  // Nao usa throw para nao quebrar a pagina — apenas interrompe a inicializacao
+  return;
 }
 
 const API_PORT = "3000";
